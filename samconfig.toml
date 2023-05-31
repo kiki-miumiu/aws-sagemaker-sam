@@ -1,1 +1,14 @@
 version = 0.1
+
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "hello-world-sagemaker"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1cvhodit3nkoz"
+s3_prefix = "hello-world-sagemaker"
+region = "ap-southeast-2"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "Name=\"hello-world-sagemaker\" EnvironmentType=\"test\" Owner=\"Platform\" VpcId=\"/CNS/resources/vpc_id\" SubnetIds=\"/CNS/resources/subnets/ic/all\" UserProfileName=\"studio-user\" SageMakerImageArn=\"arn:aws:sagemaker:ap-southeast-2:452832661640:image/datascience-1.0\""
+image_repositories = []
