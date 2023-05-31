@@ -2,6 +2,9 @@
 
 This is a boilerplate repo for aws sam
 
+## Prerequisites
+* A VPC with Subnets
+
 ## Deploy Local
 
 ```bash

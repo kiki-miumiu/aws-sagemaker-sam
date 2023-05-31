@@ -17,4 +17,110 @@ Parameters:
     Type: String
     AllowedPattern: ".+"
     Default: Platform
+  VpcId:
+    Description: VPC id of the account
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>"
+    Default: /CNS/resources/vpc_id
+  SubnetIds:
+    Type: "AWS::SSM::Parameter::Value<List<AWS::EC2::Subnet::Id>>"
+    Description: List of subnets
+    Default: /CNS/resources/subnets/ic/all
+  UserProfileName:
+    Type: String
+    Description: The user profile name for the SageMaker workshop
+    Default: 'studio-user'
+  SageMakerImageArn:
+    Type: String
+    Default: "arn:aws:sagemaker:ap-southeast-2:452832661640:image/datascience-1.0"
+
 Resources:   # Add Resource here
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-sagemaker-domain.html
+  DataScienceApp:
+    Type: AWS::SageMaker::App
+    DependsOn: StudioUserProfile
+    Properties: 
+      AppName: datascience
+      AppType: KernelGateway
+      DomainId: !GetAtt Domain.DomainId
+      ResourceSpec: 
+        InstanceType:  ml.t3.medium
+        SageMakerImageArn: !Ref SageMakerImageArn
+      UserProfileName: !Ref UserProfileName
+
+  Studio:
+    Type: AWS::SageMaker::App
+    DependsOn: StudioUserProfile
+    Properties: 
+      AppName: default
+      AppType: JupyterServer
+      DomainId: !GetAtt Domain.DomainId
+      UserProfileName: !Ref UserProfileName
+
+  StudioUserProfile:
+    Type: AWS::SageMaker::UserProfile
+    Properties: 
+      DomainId: !GetAtt Domain.DomainId
+      UserProfileName: !Ref UserProfileName
+      UserSettings:
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+        
+  Domain:
+    Type: AWS::SageMaker::Domain
+    Properties: 
+      DomainName: !Sub "${Name}-sagemaker"
+      AuthMode: IAM
+      DefaultUserSettings: 
+          ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+      VpcId: !Ref VpcId
+      SubnetIds: !Ref SubnetIds
+      # AppNetworkAccessType: VpcOnly
+      AppNetworkAccessType: PublicInternetOnly # We need this in tbv enviornment to get POC
+
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+        - PolicyName: iam-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PassRole
+                Resource: '*'
+        - PolicyName: kms-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - 
+                Effect: Allow
+                Action:
+                  - "kms:*"
+                Resource: '*'
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement:
+          - 
+            Effect: Allow
+            Principal: 
+              Service: 
+                - sagemaker.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+          -
+            Effect: Allow
+            Principal: 
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+              
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSageMakerFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'
+        - 'arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess'
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSageMakerPipelinesIntegrations"
